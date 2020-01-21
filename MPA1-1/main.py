@@ -1,94 +1,148 @@
+from abc import ABC, abstractmethod
+
+
 def hasDataType(line) -> bool:
     if "double" in line or "int" in line or "char" in line or "float" in line or "void" in line or "return" in line:
         return True
     else:
         return False
 
-def variableTokenizer(testCase) -> [str]:
-    tokenized: [str] = testCase.split(" ", 1)
-    
-    if len(tokenized) > 1:
-        trail: str = tokenized[1]
-    else:
-        trail: str = tokenized[0]
 
-    tokenized.pop()
+class Parser(ABC):
+    @abstractmethod
+    def tokenize(self):
+        pass
 
-    for temp in trail.split(","):
-        if hasDataType(temp):
-            for item in temp.split(" "):
-                if item != "":
-                    tokenized.append(item)
-        elif "\n" in temp:
-            tempList: [str] = temp.split("\n")
-            for item in tempList:
-                if " " in item:
-                    for item in item.split(" "):
-                        tokenized.append(item)
-                elif item != "":
-                    item = item.replace(" ", "")
-                    tokenized.append(item)
-        else:
-            temp = temp.replace(" ", "")
-            tokenized.append(temp)
-
-    return tokenized
+    @abstractmethod
+    def test(self):
+        pass
 
 
-def functionDeclarationTokenizer(testCase) -> [str]:
-    # makes a list containing the data type at index 0 and everything else at index 1
-    tokenized: [str] = testCase.split(" ", 1)
-    # since the name is stored somewhere in index 1, we store it in a variable
-    trail: str = tokenized[1]
-    # we remove the last item of the list which was everything to the right of the data type
-    tokenized.pop()
+class VariableParser(Parser):
+    def __init__(self, testCase: str):
+        self._string: str = testCase
+        self._tokens: [str] = []
+        self._validity: bool = True
+        self.tokenize()
 
-    # we try to isolate the name of the function by splitting the trail with the first close parenthesis we see
-    temp: [str] = trail.split(")", 1)
-    # currently the list looks like this: [function name with parameters, everything else]
+    def tokenize(self):
+        # makes a list containing the data type at index 0 and everything else at index 1
+        self._tokens = self._string.split(" ", 1)
+        # sets the trailing string to be used for further tokenization
+        trail: str = self._tokens[1] if len(
+            self._tokens) > 1 else self._tokens[0]
 
-    # removes everything after the ) from the list
-    temp.pop()
+        # removes trailing string from list of tokens
+        self._tokens.pop()
 
-    # appends function name while using the open parenthesis as the delimiter
-    tokenized.append(temp[0].split("(")[0])
-    # appends list of function parameters while using the open parenthesis as the delimiter and stripping the close parenthesis at the end
-    tokenized.append(variableTokenizer(temp[0].split("(")[1].strip(")")))
+        # tokenizes the string and creates a list using a comma as the delimiter
+        for temp in trail.split(","):
+            # checks if there is a data type in the string
+            if hasDataType(temp):
+                for item in temp.split(" "):
+                    if item != "":
+                        self._tokens.append(item)
+            # checks if the string has a newline
+            elif "\n" in temp:
+                for item in temp.split("\n"):
+                    if " " in item:
+                        for item in item.split(" "):
+                            self._tokens.append(item)
+                    elif item != "":
+                        # removes the spaces
+                        item = item.replace(" ", "")
+                        self._tokens.append(item)
+            else:
+                # removes the spaces
+                temp = temp.replace(" ", "")
+                self._tokens.append(temp)
 
-    # checks if the list for isolating the name contains anything other than the name and parameters
-    # if len(temp) > 1:
-    #     for x in variableTokenizer(temp[1]):
-    #         tokenized.append(x)
+    def test(self):
+        return
 
-    return tokenized
+    def tokens(self) -> [str]:
+        return self._tokens
 
 
-def functionDefinitionTokenizer(testCase) -> [str]:
-    tokenized: str = testCase.split("{", 1)
-    trail: str = tokenized[1].strip()
-    trail = trail.strip("}")
-    tokenized.pop()
+class FunctionDeclarationParser(Parser):
+    def __init__(self, testCase: str):
+        self._string: str = testCase
+        self._tokens: [str] = []
+        self._validity: bool = True
+        self.tokenize()
 
-    tokenized = functionDeclarationTokenizer(tokenized[0])
-    lines: [str] = trail.split(";")
-    lines.pop()
-    operations: [str] = []
-    for line in lines:
-        for item in variableTokenizer(line.strip()):
-            operations.append(item)
-        
-    tokenized.append(operations) 
+    def tokenize(self):
+        # makes a list containing the data type at index 0 and everything else at index 1
+        self._tokens: [str] = self._string.split(" ", 1)
+        # since the name is stored somewhere in index 1, we store it in a variable
+        trail: str = self._tokens[1]
+        # we remove the last item of the list which was everything to the right of the data type
+        self._tokens.pop()
 
-    return tokenized
+        # we try to isolate the name of the function by splitting the trail with the first close parenthesis we see
+        temp: [str] = trail.split(")", 1)
+        # currently the list looks like this: [function name with parameters, everything else]
+
+        # removes everything after the ) from the list
+        temp.pop()
+
+        # appends function name while using the open parenthesis as the delimiter
+        self._tokens.append(temp[0].split("(")[0])
+        # appends list of function parameters while using the open parenthesis as the delimiter and stripping the close parenthesis at the end
+        self._tokens.append(VariableParser(
+            temp[0].split("(")[1].strip(")")).tokens())
+
+        # checks if the list for isolating the name contains anything other than the name and parameters
+        # if len(temp) > 1:
+        #     for x in variableTokenizer(temp[1]):
+        #         self._tokens.append(x)
+
+    def test(self):
+        return
+
+    def tokens(self) -> [str]:
+        return self._tokens
+
+
+class FunctionDefinitionParser(Parser):
+    def __init__(self, testCase: str):
+        self._string: str = testCase
+        self._tokens: [str] = []
+        self._validity: bool = True
+        self.tokenize()
+
+    def tokenize(self):
+        # creates a list with the function name in index 0 and everything else at index 1
+        self._tokens: str = self._string.split("{", 1)
+        trail: str = self._tokens[1].strip()
+        trail = trail.strip("}")
+        self._tokens.pop()
+        # we use the tokenize function from the function declaration class
+        self._tokens = FunctionDeclarationParser(self._tokens[0]).tokens()
+        lines: [str] = trail.split(";")
+        lines.pop()
+        operations: [str] = []
+        for line in lines:
+            # we use the tokenize function from the variable class
+            for item in VariableParser(line.strip()).tokens():
+                operations.append(item)
+
+        self._tokens.append(operations)
+
+    def test(self):
+        return
+
+    def tokens(self) -> [str]:
+        return self._tokens
 
 
 def handleTokenization(testCase) -> [str]:
     if "{" in testCase:
-        return functionDefinitionTokenizer(testCase)
+        return FunctionDefinitionParser(testCase).tokens()
     elif "(" in testCase:
-        return functionDeclarationTokenizer(testCase)
+        return FunctionDeclarationParser(testCase).tokens()
     else:
-        return variableTokenizer(testCase)
+        return VariableParser(testCase).tokens()
 
 
 def tokenizeFile() -> [[str]]:
@@ -102,19 +156,19 @@ def tokenizeFile() -> [[str]]:
         testCases = [
             testCase for testCase in testCases if (testCase != "" and testCase != " ")
         ]
-        parsed: [] = []
+        tokens: [] = []
         for testCase in testCases:
             testCase = testCase.strip()
             # testCase = testCase.strip(';')
-            parsed.append(handleTokenization(testCase))
+            tokens.append(handleTokenization(testCase))
 
-        return parsed
+        return tokens
 
 
 def main():
-    parsed = tokenizeFile()
-    for item in parsed:
-        print(item)
+    tokens = tokenizeFile()
+    for token in tokens:
+        print(token)
 
 
 if __name__ == "__main__":
