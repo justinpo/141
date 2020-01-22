@@ -79,23 +79,39 @@ class FunctionDeclarationParser(Parser):
         # we remove the last item of the list which was everything to the right of the data type
         self._tokens.pop()
 
-        # we try to isolate the name of the function by splitting the trail with the first close parenthesis we see
-        temp: [str] = trail.split(")", 1)
-        # currently the list looks like this: [function name with parameters, everything else]
+        # checks if another function declaration is found
+        if '),' in trail:
+            # splits the list using ),
+            comma: [str] = trail.split('),')
+            for item in comma:
+                # returns the parenthesis that we removed during split
+                item += ')'
+                # we try to isolate the name of the function by splitting the trail with the first close parenthesis we see
+                temp: [str] = item.split(")", 1)
+                # currently the list looks like this: [function name with parameters, everything else]
 
-        # removes everything after the ) from the list
-        temp.pop()
+                # removes everything after the ) from the list
+                temp.pop()
 
-        # appends function name while using the open parenthesis as the delimiter
-        self._tokens.append(temp[0].split("(")[0])
-        # appends list of function parameters while using the open parenthesis as the delimiter and stripping the close parenthesis at the end
-        self._tokens.append(VariableParser(
-            temp[0].split("(")[1].strip(")")).tokens())
+                # appends function name while using the open parenthesis as the delimiter
+                self._tokens.append(temp[0].split("(")[0])
+                # appends list of function parameters while using the open parenthesis as the delimiter and stripping the close parenthesis at the end
+                self._tokens.append(VariableParser(
+                    temp[0].split("(")[1].strip(")")).tokens())
 
-        # checks if the list for isolating the name contains anything other than the name and parameters
-        # if len(temp) > 1:
-        #     for x in variableTokenizer(temp[1]):
-        #         self._tokens.append(x)
+        else:
+            # we try to isolate the name of the function by splitting the trail with the first close parenthesis we see
+            temp: [str] = trail.split(")", 1)
+            # currently the list looks like this: [function name with parameters, everything else]
+
+            # removes everything after the ) from the list
+            temp.pop()
+
+            # appends function name while using the open parenthesis as the delimiter
+            self._tokens.append(temp[0].split("(")[0])
+            # appends list of function parameters while using the open parenthesis as the delimiter and stripping the close parenthesis at the end
+            self._tokens.append(VariableParser(
+                temp[0].split("(")[1].strip(")")).tokens())
 
     def test(self):
         return
@@ -139,7 +155,7 @@ class FunctionDefinitionParser(Parser):
 def handleTokenization(testCase) -> [str]:
     if "{" in testCase:
         return FunctionDefinitionParser(testCase).tokens()
-    elif "(" in testCase:
+    elif "(" in testCase and not "=(" in testCase:
         return FunctionDeclarationParser(testCase).tokens()
     else:
         return VariableParser(testCase).tokens()
@@ -173,3 +189,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# References:
+#   141 by Oscar Vian Valles - https://github.com/OscarVianValles/141
