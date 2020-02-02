@@ -7,6 +7,37 @@ def hasDataType(line) -> bool:
     else:
         return False
 
+def hasDuplicateVar(tokens) -> bool:
+    variables = []
+    for token in tokens:
+        if "=" in token:
+            variables.append(token.split("=")[0])
+        elif not hasDataType(token):
+            variables.append(token)
+    if len(variables) == len(set(variables)):
+        return False
+    else:
+        return True
+
+def hasUndeclaredVar(tokens) -> bool:
+    variables = []
+    values = []
+    for token in tokens:
+        if "=" in token:
+            temp = token.split("=")
+            variables.append(temp[0])
+            if not temp[1].replace('.','').isdigit() and "'" not in temp[1]:
+                values.append(temp[1])
+        elif not hasDataType(token):
+            variables.append(token)
+    if len(values) > 0:
+        if any(x in values for x in variables):
+            return False
+        else:
+            return True
+    else:
+        return False
+
 
 class Parser(ABC):
     @abstractmethod
@@ -25,7 +56,6 @@ class VariableParser(Parser):
         self._validity: bool = True
         self.tokenize()
         self.check()
-        # print(self._tokens)
 
     def tokenize(self):
         # makes a list containing the data type at index 0 and everything else at index 1
@@ -63,54 +93,28 @@ class VariableParser(Parser):
                 temp = temp.replace(" ", "")
                 self._tokens.append(temp)
 
-    def hasDuplicateVar(self) -> bool:
-        variables = []
-        for token in self._tokens:
-            if "=" in token:
-                variables.append(token.split("=")[0])
-            elif not hasDataType(token):
-                variables.append(token)
-        if len(variables) == len(set(variables)):
-            return False
-        else:
-            return True
-
-    def hasUndeclaredVar(self) -> bool:
-        variables = []
-        values = []
-        for token in self._tokens:
-            if "=" in token:
-                temp = token.split("=")
-                variables.append(temp[0])
-                if not temp[1].replace('.','').isdigit() and "'" not in temp[1]:
-                    values.append(temp[1])
-            elif not hasDataType(token):
-                variables.append(token)
-        if len(values) > 0:
-            if any(x in values for x in variables):
-                return False
-            else:
-                return True
-        else:
-            return False
-
     def check(self):
         prev = ""
+        if ";" not in self._tokens:
+            self._validity = False
+            return
         for token in self._tokens:
             if prev != "":
-                if self.hasDuplicateVar():
+                # if the variable declaration uses the same variable more than once
+                if hasDuplicateVar(self._tokens):
                     self._validity = False
                     return
-                elif self.hasUndeclaredVar():
+                # if there was an undeclared variable used
+                elif hasUndeclaredVar(self._tokens):
                     self._validity = False
                     return
+                # if two data types were used in succession
                 elif hasDataType(token) and hasDataType(prev):
                     self._validity = False
                     return
                 elif hasDataType(token) and ";" not in prev:
                     self._validity = False
                     return
-            
             prev = token
 
     def tokens(self) -> [str]:
@@ -122,17 +126,21 @@ class VariableParser(Parser):
 class FunctionDeclarationParser(Parser):
     def __init__(self, testCase: str):
         self._string: str = testCase
-        self._tokens: [str] = []
+        self._name: [str] = []
+        self._params: [str] = []
         self._validity: bool = True
         self.tokenize()
+        self.check()
+        print(self._name)
+        print(self._params)
 
     def tokenize(self):
         # makes a list containing the data type at index 0 and everything else at index 1
-        self._tokens: [str] = self._string.split(" ", 1)
+        self._name: [str] = self._string.split(" ", 1)
         # since the name is stored somewhere in index 1, we store it in a variable
-        trail: str = self._tokens[1]
+        trail: str = self._name[1]
         # we remove the last item of the list which was everything to the right of the data type
-        self._tokens.pop()
+        self._name.pop()
 
         # checks if another function declaration is found
         if '),' in trail:
@@ -145,78 +153,117 @@ class FunctionDeclarationParser(Parser):
                 temp: [str] = item.split(")", 1)
                 # currently the list looks like this: [function name with parameters, everything else]
 
+
+                hasSemiColon = False
+                if ";" in temp:
+                    hasSemiColon = True
+
                 # removes everything after the ) from the list
                 temp.pop()
 
                 # appends function name while using the open parenthesis as the delimiter
-                self._tokens.append(temp[0].split("(")[0])
+                self._name.append(temp[0].split("(")[0])
                 # appends list of function parameters while using the open parenthesis as the delimiter and stripping the close parenthesis at the end
-                self._tokens.append(VariableParser(
-                    temp[0].split("(")[1].strip(")")).tokens())
+                self._params = VariableParser(
+                    temp[0].split("(")[1].strip(")")).tokens()
+                
+                if hasSemiColon:
+                    self._name.append(";")
 
         else:
             # we try to isolate the name of the function by splitting the trail with the first close parenthesis we see
             temp: [str] = trail.split(")", 1)
             # currently the list looks like this: [function name with parameters, everything else]
 
+            hasSemiColon = False
+            if ";" in temp:
+                hasSemiColon = True
+
             # removes everything after the ) from the list
             temp.pop()
 
             # appends function name while using the open parenthesis as the delimiter
-            self._tokens.append(temp[0].split("(")[0])
+            self._name.append(temp[0].split("(")[0])
             # appends list of function parameters while using the open parenthesis as the delimiter and stripping the close parenthesis at the end
-            self._tokens.append(VariableParser(
-                temp[0].split("(")[1].strip(")")).tokens())
+            self._params = VariableParser(
+                temp[0].split("(")[1].strip(")")).tokens()
+
+            if hasSemiColon:
+                self._name.append(";")
 
     def check(self):
-        return
+        prev = ""
+        if ";" not in self._name:
+            self._validity = False
+            return
 
-    def tokens(self) -> [str]:
-        return self._tokens
+        for token in self._name:
+            if prev != "":
+                if hasDataType(token) and hasDataType(prev):
+                    self._validity = False
+                    return
+            prev = token
+        
+        prev = ""
+
+        for token in self._params:
+            if prev != "":
+                # if the variable declaration uses the same variable more than once
+                if hasDuplicateVar(self._params):
+                    self._validity = False
+                    return
+                # if there was an undeclared variable used
+                elif hasUndeclaredVar(self._params):
+                    self._validity = False
+                    return
+            prev = token
+    
+    def validity(self) -> str:
+        return "Valid Function Declaration" if self._validity == True else "Invalid Function Declaration"
 
 
-class FunctionDefinitionParser(Parser):
-    def __init__(self, testCase: str):
-        self._string: str = testCase
-        self._tokens: [str] = []
-        self._validity: bool = True
-        self.tokenize()
+# class FunctionDefinitionParser(Parser):
+#     def __init__(self, testCase: str):
+#         self._string: str = testCase
+#         self._tokens: [str] = []
+#         self._validity: bool = True
+#         self.tokenize()
 
-    def tokenize(self):
-        # creates a list with the function name in index 0 and everything else at index 1
-        self._tokens: str = self._string.split("{", 1)
-        trail: str = self._tokens[1].strip()
-        trail = trail.strip("}")
-        self._tokens.pop()
-        # we use the tokenize function from the function declaration class
-        self._tokens = FunctionDeclarationParser(self._tokens[0]).tokens()
-        lines: [str] = trail.split(";")
-        lines.pop()
-        operations: [str] = []
-        for line in lines:
-            # we use the tokenize function from the variable class
-            for item in VariableParser(line.strip()).tokens():
-                operations.append(item)
+#     def tokenize(self):
+#         # creates a list with the function name in index 0 and everything else at index 1
+#         self._tokens: str = self._string.split("{", 1)
+#         trail: str = self._tokens[1].strip()
+#         trail = trail.strip("}")
+#         self._tokens.pop()
+#         # we use the tokenize function from the function declaration class
+#         self._tokens = FunctionDeclarationParser(self._tokens[0]).tokens()
+#         lines: [str] = trail.split(";")
+#         lines.pop()
+#         operations: [str] = []
+#         for line in lines:
+#             # we use the tokenize function from the variable class
+#             for item in VariableParser(line.strip()).tokens():
+#                 operations.append(item)
 
-        self._tokens.append(operations)
+#         self._tokens.append(operations)
 
-    def check(self):
-        return
+#     def check(self):
+#         return
 
-    def tokens(self) -> [str]:
-        return self._tokens
+#     def tokens(self) -> [str]:
+#         return self._tokens
 
 
 def handleChecks(testCase) -> [str]:
     # if "{" in testCase:
     #     return FunctionDefinitionParser(testCase).validity()
-    # elif "(" in testCase and not "=(" in testCase:
-    #     return FunctionDeclarationParser(testCase).validity()
-    # else:
+    if "(" in testCase and not "=(" in testCase:
+        return FunctionDeclarationParser(testCase).validity()
+    else:
         return VariableParser(testCase).validity()
 
 
-def tokenizeFile() -> [[str]]:
+def parseFile() -> [[str]]:
     with open("mpa1.in") as file:
         inputString: str = file.read()
         inputString = inputString.split("\n", 1)[1]
@@ -237,10 +284,12 @@ def tokenizeFile() -> [[str]]:
 
 
 def main():
-    tokens = tokenizeFile()
-    for token in tokens:
-        print(token)
-
+    file = open("po1.out","w+")
+    cases = parseFile()
+    for case in cases:
+        file.write(case)
+        file.write("\n")
+    file.close()
 
 if __name__ == "__main__":
     main()

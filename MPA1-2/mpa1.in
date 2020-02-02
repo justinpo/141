@@ -1,4 +1,4 @@
-40
+52
 int x;#
 int x,y;#
 int x = 1, y =23;#
@@ -29,3 +29,10 @@ y, x = 45;#
 double a
 int x #
 char ch;#
+void f();#
+int int();#
+int char();#
+int function(int)#
+int a = 10;#
+void f(int);#
+char f_2(int,int);#
