@@ -14,7 +14,7 @@ class Parser(ABC):
         pass
 
     @abstractmethod
-    def test(self):
+    def check(self):
         pass
 
 
@@ -24,6 +24,8 @@ class VariableParser(Parser):
         self._tokens: [str] = []
         self._validity: bool = True
         self.tokenize()
+        self.check()
+        # print(self._tokens)
 
     def tokenize(self):
         # makes a list containing the data type at index 0 and everything else at index 1
@@ -52,17 +54,70 @@ class VariableParser(Parser):
                         # removes the spaces
                         item = item.replace(" ", "")
                         self._tokens.append(item)
+            elif ";" in temp:
+                temp = temp.replace(" ", "")
+                self._tokens.append(temp.split(";")[0])
+                self._tokens.append(";")
             else:
                 # removes the spaces
                 temp = temp.replace(" ", "")
                 self._tokens.append(temp)
 
-    def test(self):
-        return
+    def hasDuplicateVar(self) -> bool:
+        variables = []
+        for token in self._tokens:
+            if "=" in token:
+                variables.append(token.split("=")[0])
+            elif not hasDataType(token):
+                variables.append(token)
+        if len(variables) == len(set(variables)):
+            return False
+        else:
+            return True
+
+    def hasUndeclaredVar(self) -> bool:
+        variables = []
+        values = []
+        for token in self._tokens:
+            if "=" in token:
+                temp = token.split("=")
+                variables.append(temp[0])
+                if not temp[1].replace('.','').isdigit() and "'" not in temp[1]:
+                    values.append(temp[1])
+            elif not hasDataType(token):
+                variables.append(token)
+        if len(values) > 0:
+            if any(x in values for x in variables):
+                return False
+            else:
+                return True
+        else:
+            return False
+
+    def check(self):
+        prev = ""
+        for token in self._tokens:
+            if prev != "":
+                if self.hasDuplicateVar():
+                    self._validity = False
+                    return
+                elif self.hasUndeclaredVar():
+                    self._validity = False
+                    return
+                elif hasDataType(token) and hasDataType(prev):
+                    self._validity = False
+                    return
+                elif hasDataType(token) and ";" not in prev:
+                    self._validity = False
+                    return
+            
+            prev = token
 
     def tokens(self) -> [str]:
         return self._tokens
 
+    def validity(self) -> str:
+        return "Valid Variable Declaration" if self._validity == True else "Invalid Variable Declaration"
 
 class FunctionDeclarationParser(Parser):
     def __init__(self, testCase: str):
@@ -113,7 +168,7 @@ class FunctionDeclarationParser(Parser):
             self._tokens.append(VariableParser(
                 temp[0].split("(")[1].strip(")")).tokens())
 
-    def test(self):
+    def check(self):
         return
 
     def tokens(self) -> [str]:
@@ -145,20 +200,20 @@ class FunctionDefinitionParser(Parser):
 
         self._tokens.append(operations)
 
-    def test(self):
+    def check(self):
         return
 
     def tokens(self) -> [str]:
         return self._tokens
 
 
-def handleTokenization(testCase) -> [str]:
-    if "{" in testCase:
-        return FunctionDefinitionParser(testCase).tokens()
-    elif "(" in testCase and not "=(" in testCase:
-        return FunctionDeclarationParser(testCase).tokens()
-    else:
-        return VariableParser(testCase).tokens()
+def handleChecks(testCase) -> [str]:
+    # if "{" in testCase:
+    #     return FunctionDefinitionParser(testCase).validity()
+    # elif "(" in testCase and not "=(" in testCase:
+    #     return FunctionDeclarationParser(testCase).validity()
+    # else:
+        return VariableParser(testCase).validity()
 
 
 def tokenizeFile() -> [[str]]:
@@ -172,13 +227,13 @@ def tokenizeFile() -> [[str]]:
         testCases = [
             testCase for testCase in testCases if (testCase != "" and testCase != " ")
         ]
-        tokens: [] = []
+        cases: [] = []
         for testCase in testCases:
             testCase = testCase.strip()
             # testCase = testCase.strip(';')
-            tokens.append(handleTokenization(testCase))
+            cases.append(handleChecks(testCase))
 
-        return tokens
+        return cases
 
 
 def main():
