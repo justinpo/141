@@ -7,6 +7,7 @@ def hasDataType(line) -> bool:
     else:
         return False
 
+
 def hasDuplicateVar(tokens) -> bool:
     variables = []
     for token in tokens:
@@ -19,6 +20,7 @@ def hasDuplicateVar(tokens) -> bool:
     else:
         return True
 
+
 def hasUndeclaredVar(tokens) -> bool:
     variables = []
     values = []
@@ -26,7 +28,7 @@ def hasUndeclaredVar(tokens) -> bool:
         if "=" in token:
             temp = token.split("=")
             variables.append(temp[0])
-            if not temp[1].replace('.','').isdigit() and "'" not in temp[1]:
+            if not temp[1].replace('.', '').isdigit() and "'" not in temp[1]:
                 values.append(temp[1])
         elif not hasDataType(token):
             variables.append(token)
@@ -123,6 +125,7 @@ class VariableParser(Parser):
     def validity(self) -> str:
         return "Valid Variable Declaration" if self._validity == True else "Invalid Variable Declaration"
 
+
 class FunctionDeclarationParser(Parser):
     def __init__(self, testCase: str):
         self._string: str = testCase
@@ -131,8 +134,6 @@ class FunctionDeclarationParser(Parser):
         self._validity: bool = True
         self.tokenize()
         self.check()
-        print(self._name)
-        print(self._params)
 
     def tokenize(self):
         # makes a list containing the data type at index 0 and everything else at index 1
@@ -153,7 +154,6 @@ class FunctionDeclarationParser(Parser):
                 temp: [str] = item.split(")", 1)
                 # currently the list looks like this: [function name with parameters, everything else]
 
-
                 hasSemiColon = False
                 if ";" in temp:
                     hasSemiColon = True
@@ -166,7 +166,7 @@ class FunctionDeclarationParser(Parser):
                 # appends list of function parameters while using the open parenthesis as the delimiter and stripping the close parenthesis at the end
                 self._params = VariableParser(
                     temp[0].split("(")[1].strip(")")).tokens()
-                
+
                 if hasSemiColon:
                     self._name.append(";")
 
@@ -203,7 +203,7 @@ class FunctionDeclarationParser(Parser):
                     self._validity = False
                     return
             prev = token
-        
+
         prev = ""
 
         for token in self._params:
@@ -217,7 +217,7 @@ class FunctionDeclarationParser(Parser):
                     self._validity = False
                     return
             prev = token
-    
+
     def validity(self) -> str:
         return "Valid Function Declaration" if self._validity == True else "Invalid Function Declaration"
 
@@ -284,12 +284,13 @@ def parseFile() -> [[str]]:
 
 
 def main():
-    file = open("po1.out","w+")
+    file = open("po1.out", "w+")
     cases = parseFile()
     for case in cases:
         file.write(case)
         file.write("\n")
     file.close()
+
 
 if __name__ == "__main__":
     main()
