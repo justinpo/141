@@ -36,3 +36,4 @@ int function(int)#
 int a = 10;#
 void f(int);#
 char f_2(int,int);#
+int function();#

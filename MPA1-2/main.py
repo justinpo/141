@@ -8,6 +8,15 @@ def hasDataType(line) -> bool:
         return False
 
 
+def hasMultipleDataTypes(tokens) -> bool:
+    count = 0
+    for token in tokens:
+        if hasDataType(token):
+            count += 1
+
+    return True if count > 1 else False
+
+
 def hasDuplicateVar(tokens) -> bool:
     variables = []
     for token in tokens:
@@ -30,11 +39,39 @@ def hasUndeclaredVar(tokens) -> bool:
             variables.append(temp[0])
             if not temp[1].replace('.', '').isdigit() and "'" not in temp[1]:
                 values.append(temp[1])
-        elif not hasDataType(token):
+            # checks if there is an empty character declared
+            elif "''" in temp[1]:
+                return True
+            else:
+                # we add an empty element so that we could save the position of the values
+                values.append(' ')
+        elif not hasDataType(token) and not ";":
             variables.append(token)
-    if len(values) > 0:
+            # we add an empty element so that we could save the position of the values
+            values.append(' ')
+    # creates temporary list to remove empty elements
+    temp = []
+    for x in values:
+        temp.append(x)
+
+    # removes empty elements
+    for item in temp:
+        if ' ' in item:
+            temp.remove(' ')
+    if ' ' in temp:
+        temp.remove(' ')
+
+    if len(temp) > 0:
         if any(x in values for x in variables):
-            return False
+            valuePos = 0
+            varPos = 0
+            for i in values:
+                for j in variables:
+                    if i == j:
+                        # if the variable was assigned to another variable before it was declared, it returns True
+                        return False if valuePos < varPos else True
+                    varPos += 1
+                valuePos += 1
         else:
             return True
     else:
@@ -100,6 +137,7 @@ class VariableParser(Parser):
         if ";" not in self._tokens:
             self._validity = False
             return
+
         for token in self._tokens:
             if prev != "":
                 # if the variable declaration uses the same variable more than once
@@ -115,6 +153,9 @@ class VariableParser(Parser):
                     self._validity = False
                     return
                 elif hasDataType(token) and ";" not in prev:
+                    self._validity = False
+                    return
+                elif hasMultipleDataTypes(token):
                     self._validity = False
                     return
             prev = token
@@ -149,7 +190,8 @@ class FunctionDeclarationParser(Parser):
             comma: [str] = trail.split('),')
             for item in comma:
                 # returns the parenthesis that we removed during split
-                item += ')'
+                if item != comma[-1]:
+                    item += ')'
                 # we try to isolate the name of the function by splitting the trail with the first close parenthesis we see
                 temp: [str] = item.split(")", 1)
                 # currently the list looks like this: [function name with parameters, everything else]
@@ -199,6 +241,7 @@ class FunctionDeclarationParser(Parser):
 
         for token in self._name:
             if prev != "":
+                # if two data types were used in succession
                 if hasDataType(token) and hasDataType(prev):
                     self._validity = False
                     return
@@ -277,7 +320,6 @@ def parseFile() -> [[str]]:
         cases: [] = []
         for testCase in testCases:
             testCase = testCase.strip()
-            # testCase = testCase.strip(';')
             cases.append(handleChecks(testCase))
 
         return cases
@@ -295,5 +337,8 @@ def main():
 if __name__ == "__main__":
     main()
 
+
 # References:
 #   141 by Oscar Vian Valles - https://github.com/OscarVianValles/141
+#   How to check if one of the following items is in a list? - https://stackoverflow.com/questions/740287/how-to-check-if-one-of-the-following-items-is-in-a-list
+#   Python : 3 ways to check if there are duplicates in a List - https://thispointer.com/python-3-ways-to-check-if-there-are-duplicates-in-a-list/
