@@ -133,23 +133,23 @@ class VariableParser(Parser):
                 self._tokens.append(temp)
 
     def check(self):
-        prev = ""
         if ";" not in self._tokens:
             self._validity = False
             return
+        # if the variable declaration uses the same variable more than once
+        elif hasDuplicateVar(self._tokens):
+            self._validity = False
+            return
+        # if there was an undeclared variable used
+        elif hasUndeclaredVar(self._tokens):
+            self._validity = False
+            return
 
+        prev = ""
         for token in self._tokens:
             if prev != "":
-                # if the variable declaration uses the same variable more than once
-                if hasDuplicateVar(self._tokens):
-                    self._validity = False
-                    return
-                # if there was an undeclared variable used
-                elif hasUndeclaredVar(self._tokens):
-                    self._validity = False
-                    return
                 # if two data types were used in succession
-                elif hasDataType(token) and hasDataType(prev):
+                if hasDataType(token) and hasDataType(prev):
                     self._validity = False
                     return
                 elif hasDataType(token) and ";" not in prev:
@@ -247,19 +247,19 @@ class FunctionDeclarationParser(Parser):
                     return
             prev = token
 
-        prev = ""
+        for param in self._params:
+            if "=" in param:
+                self._validity = False
+                return
 
-        for token in self._params:
-            if prev != "":
-                # if the variable declaration uses the same variable more than once
-                if hasDuplicateVar(self._params):
-                    self._validity = False
-                    return
-                # if there was an undeclared variable used
-                elif hasUndeclaredVar(self._params):
-                    self._validity = False
-                    return
-            prev = token
+        # if the variable declaration uses the same variable more than once
+        if hasDuplicateVar(self._params):
+            self._validity = False
+            return
+        # if there was an undeclared variable used
+        elif hasUndeclaredVar(self._params):
+            self._validity = False
+            return
 
     def validity(self) -> str:
         return "Valid Function Declaration" if self._validity == True else "Invalid Function Declaration"
