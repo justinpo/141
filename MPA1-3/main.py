@@ -7,6 +7,22 @@ def hasDataType(line) -> bool:
     else:
         return False
 
+
+def hasOperation(line) -> bool:
+    if "+" in line or "*" in line or "/" in line or "-" in line:
+        return True
+    else:
+        return False
+
+
+def hasSucceedingDataTypes(tokens) -> bool:
+    pos: int = 0
+    for token in tokens:
+        if hasDataType(token) and hasDataType(tokens[pos + 1]):
+            return True
+        pos += 1
+    return False
+
 def hasMultipleDataTypes(tokens) -> bool:
     count = 0
     for token in tokens:
@@ -75,6 +91,40 @@ def hasUndeclaredVar(tokens) -> bool:
             return True
     else:
         return False
+
+
+def hasMultipleDeclarations(tokens) -> str:
+    pos: int = 0
+    variables: [str] = []
+
+    for token in tokens:
+        if hasDataType(token) and not hasDataType(tokens[pos+1]):
+            variables.append(tokens[pos+1].split("=")[0])
+        pos += 1
+
+    if len(variables) == len(set(variables)):
+        return False
+    else:
+        return True
+
+
+def findDataType(tokens, variable) -> str:
+    pos: int = 0
+    for token in tokens:
+        if token == variable:
+            return tokens[pos - 1]
+        pos += 1
+    return "none"
+
+
+def isDeclared(tokens, variable) -> bool:
+    pos: int = 0
+    for token in tokens:
+        if token.split("=")[0] == variable:
+            if hasDataType(tokens[pos - 1]):
+                return True
+        pos += 1
+    return False
 
 
 class Parser(ABC):
@@ -269,6 +319,9 @@ class FunctionDeclarationParser(Parser):
     def validity(self) -> str:
         return "Valid Function Declaration" if self._validity == True else "Invalid Function Declaration"
 
+    def valid(self) -> str:
+        return self._validity
+
 
 class FunctionDefinitionParser(Parser):
     def __init__(self, testCase: str):
@@ -281,7 +334,7 @@ class FunctionDefinitionParser(Parser):
         self.tokenize()
         if self._validity == True:
             self.check()
-        print([self._name, self._params, self._operations, self._return])
+        # print([self._name, self._params, self._operations, self._return])
 
     def tokenize(self):
         # creates a list with the function name in index 0 and everything else at index 1
@@ -290,12 +343,15 @@ class FunctionDefinitionParser(Parser):
         trail = trail.strip("}")
         self._tokens.pop()
         # we use the tokenize function from the function declaration class
-        functionDeclaration = FunctionDeclarationParser(self._tokens[0])
+        functionDeclaration = FunctionDeclarationParser(self._tokens[0] + ';')
+        functionDeclaration.check()
+        if functionDeclaration.valid() == False:
+            self._validity = False
+            return
         self._name = functionDeclaration.name()
         self._params = functionDeclaration.params()
         lines: [str] = trail.split(";")
         lines.pop()
-        operations: [str] = []
         for line in lines:
             if "{" in line.strip() or "}" in line.strip():
                 self._validity = False
@@ -303,15 +359,39 @@ class FunctionDefinitionParser(Parser):
             # we use the tokenize function from the variable class
             variable = VariableParser(line.strip())
             if "return" in variable.tokens():
-                self._return.append(variable.tokens())
+                self._return = variable.tokens()
             else:
                 for item in variable.tokens():
-                    operations.append(item)
-
-        self._operations.append(operations)
+                    self._operations.append(item)
 
     def check(self):
-        return
+        temp: [str] = []
+
+        for param in self._params:
+            if param != '':
+                temp.append(param)
+        for operation in self._operations:
+            if operation != '':
+                temp.append(operation)
+
+        if self._name[0] == "void" and len(self._return) > 0:
+            self._validity = False
+            return
+        elif self._name[0] == "int" and len(self._return) == 0:
+            self._validity = False
+            return
+        elif hasMultipleDeclarations(temp):
+            self._validity = False
+            return
+        elif len(self._return) > 0 and findDataType(temp, self._return[1]) != self._name[0] and findDataType(temp, self._return[1]) != "none":
+            self._validity = False
+            return
+        elif len(self._return) > 0 and not hasOperation(self._return[1]) and not isDeclared(temp, self._return[1]):
+            self._validity = False
+            return
+        elif hasSucceedingDataTypes(self._params):
+            self._validity = False
+            return
 
     def tokens(self) -> [str]:
         return self._tokens
