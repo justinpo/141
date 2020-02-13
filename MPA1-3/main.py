@@ -18,8 +18,9 @@ def hasOperation(line) -> bool:
 def hasSucceedingDataTypes(tokens) -> bool:
     pos: int = 0
     for token in tokens:
-        if hasDataType(token) and hasDataType(tokens[pos + 1]):
-            return True
+        if hasDataType(token) and pos + 1 < len(tokens):
+            if hasDataType(tokens[pos + 1]):
+                return True
         pos += 1
     return False
 
@@ -92,6 +93,31 @@ def hasUndeclaredVar(tokens) -> bool:
     else:
         return False
 
+
+def usedUndeclaredVar(tokens) -> bool:
+    variables = []
+    used = []
+    pos: int = 0
+    for token in tokens:
+        if hasDataType(token) and not hasDataType(tokens[pos + 1]):
+            variables.append(tokens[pos + 1].split("=")[0])
+        pos += 1
+    for token in tokens:
+        if "=" in token:
+            temp = token.split("=")[1]
+            for t in temp:
+                if not hasOperation(t) and not t.isnumeric():
+                    used.append(t)
+    for u in used:
+        pos = 0
+        for v in variables:
+            if u == v:
+                break
+            pos += 1
+        if pos == len(variables):
+            return True
+
+    return False
 
 def hasMultipleDeclarations(tokens) -> str:
     pos: int = 0
@@ -377,9 +403,6 @@ class FunctionDefinitionParser(Parser):
         if self._name[0] == "void" and len(self._return) > 0:
             self._validity = False
             return
-        elif self._name[0] == "int" and len(self._return) == 0:
-            self._validity = False
-            return
         elif hasMultipleDeclarations(temp):
             self._validity = False
             return
@@ -390,6 +413,14 @@ class FunctionDefinitionParser(Parser):
             self._validity = False
             return
         elif hasSucceedingDataTypes(self._params):
+            self._validity = False
+            return
+        elif len(self._params) == 1:
+            if hasDataType(self._params[0]):
+                self._validity = False
+                return
+        elif usedUndeclaredVar(temp):
+            # print(temp)
             self._validity = False
             return
 
