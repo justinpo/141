@@ -360,7 +360,6 @@ class FunctionDefinitionParser(Parser):
         self.tokenize()
         if self._validity == True:
             self.check()
-        # print([self._name, self._params, self._operations, self._return])
 
     def tokenize(self):
         # creates a list with the function name in index 0 and everything else at index 1
@@ -400,27 +399,33 @@ class FunctionDefinitionParser(Parser):
             if operation != '':
                 temp.append(operation)
 
+        # if function type is void and has a return value
         if self._name[0] == "void" and len(self._return) > 0:
             self._validity = False
             return
+        # if a variable was declared multiple times
         elif hasMultipleDeclarations(temp):
             self._validity = False
             return
+        # if return type is not the same as function type
         elif len(self._return) > 0 and findDataType(temp, self._return[1]) != self._name[0] and findDataType(temp, self._return[1]) != "none":
             self._validity = False
             return
+        # if the return variable was not declared
         elif len(self._return) > 0 and not hasOperation(self._return[1]) and not isDeclared(temp, self._return[1]):
             self._validity = False
             return
+        # if the parameters have succeeding data types
         elif hasSucceedingDataTypes(self._params):
             self._validity = False
             return
+        # if params only has one token and is a data type
         elif len(self._params) == 1:
             if hasDataType(self._params[0]):
                 self._validity = False
                 return
+        # if the functions uses an undeclared variable
         elif usedUndeclaredVar(temp):
-            # print(temp)
             self._validity = False
             return
 
@@ -476,3 +481,5 @@ if __name__ == "__main__":
 #   141 by Oscar Vian Valles - https://github.com/OscarVianValles/141
 #   How to check if one of the following items is in a list? - https://stackoverflow.com/questions/740287/how-to-check-if-one-of-the-following-items-is-in-a-list
 #   Python : 3 ways to check if there are duplicates in a List - https://thispointer.com/python-3-ways-to-check-if-there-are-duplicates-in-a-list/
+#   Python String isnumeric() and its application - https://www.geeksforgeeks.org/python-string-isnumeric-application/
+#   Iterating each character in a string using Python - https://stackoverflow.com/questions/538346/iterating-each-character-in-a-string-using-python
